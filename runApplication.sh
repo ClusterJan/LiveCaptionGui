@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
 
+VIRTUAL_ENV_DIR=venv
 
-tmux new -d -s my-session-name \; split-window -v ;\
-tmux send-keys -t my-session-name.0 "tail -f live-translation/captions.txt" ENTER
-tmux send-keys -t my-session-name.1 "export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/key.json && cd live-translation && poetry shell " ENTER
+if [ -z "${VIRTUAL_ENV}" ]; then
+    if [ -d "$VIRTUAL_ENV_DIR" ]; then
+        echo "test"
+        echo "$VIRTUAL_ENV_DIR/bin/activate"
+    else
+        python3 -m virtualenv $VIRTUAL_ENV_DIR
+        source $VIRTUAL_ENV_DIR/bin/activate
+        pip install -r requirements.txt
+    fi
+fi
 
-sleep 2
-tmux send-keys -t my-session-name.1 "translate -f it-IT -t en-US" ENTER
+KEY_FILE=$(pwd)/key.json
+if [[ -f "$KEY_FILE" ]]; then
+    GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/key.json
+    export GOOGLE_APPLICATION_CREDENTIALS
+else
+    echo "Key file not found"
+    exit 1
+fi
 
-# Use this to connect whenever you want
-tmux a -t my-session-name
+python3 main.py
