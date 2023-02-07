@@ -1,8 +1,14 @@
-import tkinter
+import itertools
 import tkinter as tk
 import threading
-import queue
+from six.moves import queue
 import time
+from google.cloud import mediatranslation as media
+from microphone import MicrophoneStream
+
+RATE = 16000
+CHUNK = int(RATE / 10)  # 100ms
+SpeechEventType = media.StreamingTranslateSpeechResponse.SpeechEventType
 
 
 class CaptionGUI:
@@ -23,9 +29,9 @@ class CaptionGUI:
         self.frame.grid_columnconfigure(1, weight=1)
         self.frame.grid_rowconfigure(1, weight=1)
 
-        self.start_btn = tkinter.Button(self.frame, text="Start",
-                                        fg="black", bg="black",
-                                        command=lambda: self.start_robots())
+        self.start_btn = tk.Button(self.frame, text="Start",
+                                   fg="black", bg="black",
+                                   command=lambda: self.start_robots())
         self.start_btn.config(width=10)
         self.start_btn.grid(row=0, column=1)
 
@@ -33,8 +39,8 @@ class CaptionGUI:
         self.label_caption_1_text = tk.StringVar()
         self.label_caption_1_text.set("Here could be your caption.")
 
-        self.label_caption_1 = tk.Label(self.frame, font=("Helvetica", 30),
-                                        bg="black", fg="white", wraplength=800, justify=tk.CENTER,
+        self.label_caption_1 = tk.Label(self.frame, font=("Helvetica", 40),
+                                        bg="black", fg="white", wraplength=1000, justify=tk.CENTER,
                                         textvariable=self.label_caption_1_text)
 
         self.label_caption_1_robot = Robot("robot_one", self.label_caption_1_queue)
@@ -55,7 +61,37 @@ class Robot(threading.Thread):
         super().__init__(name=name)
         self.daemon = True
         self.label_queue = label_queue
-        self.caption_file = open("/Users/janvonaschwege/PycharmProjects/live-translation/captions.txt", "r")
+
+        # Translation Logic
+        client = media.SpeechTranslationServiceClient()
+
+        speech_config = media.TranslateSpeechConfig(
+            audio_encoding=media.AudioEncoding.LINEAR16,
+            source_language_code="it-IT",
+            target_language_code="en-US",
+        )
+
+        config = media.StreamingTranslateSpeechConfig(
+            audio_config=speech_config,
+            single_utterance=True,
+        )
+
+        first_request = media.StreamingTranslateSpeechRequest(
+            streaming_config=config
+        )
+
+        with MicrophoneStream(RATE, CHUNK) as stream:
+            audio_generator = stream.generator()
+            mic_requests = (
+                media.StreamingTranslateSpeechRequest(audio_content=content)
+                for content in audio_generator
+            )
+
+            requests = itertools.chain([first_request], mic_requests)
+            responses = client.streaming_translate_speech(requests)
+            result = None # TODO implement result
+            if result == 0:
+                stream.exit()
 
     def run(self) -> None:
         while True:
