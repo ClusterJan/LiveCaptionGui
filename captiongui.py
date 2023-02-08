@@ -20,7 +20,7 @@ TARGET_LANGUAGE = "en-US"
 
 # GUI parameters
 CAPTION_UPDATE_INTERVAL = 0.1  # seconds
-TIMEOUT_AFTER_FINAL_CAPTION = 3  # seconds
+TIMEOUT_AFTER_FINAL_CAPTION = 2  # seconds
 
 SpeechEventType = media.StreamingTranslateSpeechResponse.SpeechEventType
 

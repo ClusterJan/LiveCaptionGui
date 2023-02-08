@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 
-VIRTUAL_ENV_DIR=venv
+VIRTUAL_ENV_DIR=venv-new
+
+PORT_FILE=portaudio
+if [[ ! -f "$PORT_FILE" ]]; then
+  brew remove portaudio
+  brew install portaudio
+  touch portaudio
+fi
 
 if [ -z "${VIRTUAL_ENV}" ]; then
     if [ -d "$VIRTUAL_ENV_DIR" ]; then
