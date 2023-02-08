@@ -15,8 +15,8 @@ RATE = 16000
 CHUNK = int(RATE / 10)  # 100ms
 
 # Translation parameters
-SOURCE_LANGUAGE = "en-US"
-TARGET_LANGUAGE = "it-IT"
+SOURCE_LANGUAGE = "it-IT"
+TARGET_LANGUAGE = "en-US"
 
 # GUI parameters
 CAPTION_UPDATE_INTERVAL = 0.1  # seconds
