@@ -1,19 +1,15 @@
-# This is a sample Python script.
-import tkinter
-
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+from pynput import keyboard
 from captiongui import CaptionGUI
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
     gui = CaptionGUI()
+
+    with keyboard.GlobalHotKeys({
+        '<shift>+A': gui.start_robots,
+        '<shift>+D': gui.stop_robots
+    }) as h:
+        h.join()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

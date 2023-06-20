@@ -74,9 +74,11 @@ class CaptionGUI:
         self.root.mainloop()
 
     def start_robots(self):
+        print("Robot started")
         self.label_caption_1_robot.start()
 
     def stop_robots(self):
+        print("Robot stopped")
         self.label_caption_1_robot.stop()
 
     def on_closing(self):
