@@ -47,13 +47,13 @@ class CaptionGUI:
         self.start_btn = tk.Button(self.frame, text="Start",
                                    fg="black", bg="black",
                                    command=lambda: self.start_robots())
-        self.start_btn.config(width=10)
+        self.start_btn.config(width=5)
         self.start_btn.grid(row=0, column=0)
 
         self.stop_btn = tk.Button(self.frame, text="Stop",
                                   fg="black", bg="black",
                                   command=lambda: self.stop_robots())
-        self.stop_btn.config(width=10)
+        self.stop_btn.config(width=5)
         self.stop_btn.grid(row=0, column=2)
 
         self.label_caption_1_queue = queue.Queue()  # Queue for the caption label: (translation, is_final)
@@ -61,7 +61,7 @@ class CaptionGUI:
         self.label_caption_1_text.set("System is ready.\nPress Start to begin.")
 
         self.label_caption_1 = tk.Label(self.frame, font=("Helvetica", 80),
-                                        bg="black", fg="white", wraplength=1700, justify=tk.CENTER,
+                                        bg="black", fg="white", wraplength=1400, justify=tk.CENTER,
                                         textvariable=self.label_caption_1_text)
 
         self.label_caption_1_robot = Robot("robot_one", self.label_caption_1_queue)
@@ -69,7 +69,7 @@ class CaptionGUI:
                                                     self.label_caption_1_text)
         self.label_caption_1_updater.start()
 
-        self.label_caption_1.grid(row=1, column=1)
+        self.label_caption_1.grid(row=1, column=0, columnspan=3)
 
         self.root.mainloop()
 
