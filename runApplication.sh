@@ -9,16 +9,16 @@ if [[ ! -f "$PORT_FILE" ]]; then
   touch portaudio
 fi
 
-if [ -z "${VIRTUAL_ENV}" ]; then
-    if [ -d "$VIRTUAL_ENV_DIR" ]; then
-        echo "test"
-        echo "$VIRTUAL_ENV_DIR/bin/activate"
-    else
-        python3 -m virtualenv $VIRTUAL_ENV_DIR
-        source $VIRTUAL_ENV_DIR/bin/activate
-        pip install -r requirements.txt
-    fi
-fi
+#if [ -z "${VIRTUAL_ENV}" ]; then
+#    if [ -d "$VIRTUAL_ENV_DIR" ]; then
+#        echo "test"
+#        echo "$VIRTUAL_ENV_DIR/bin/activate"
+#    else
+#        python3 -m virtualenv $VIRTUAL_ENV_DIR
+#        source $VIRTUAL_ENV_DIR/bin/activate
+#        pip install -r requirements.txt
+#    fi
+#fi
 
 KEY_FILE=$(pwd)/key.json
 if [[ -f "$KEY_FILE" ]]; then
