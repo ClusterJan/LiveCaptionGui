@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VIRTUAL_ENV_DIR=venv-new
+VIRTUAL_ENV_DIR=venv
 
 PORT_FILE=portaudio
 if [[ ! -f "$PORT_FILE" ]]; then
