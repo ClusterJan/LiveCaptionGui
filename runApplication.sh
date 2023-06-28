@@ -29,4 +29,4 @@ else
     exit 1
 fi
 
-python3 main.py
+venv/bin/python3 main.py
