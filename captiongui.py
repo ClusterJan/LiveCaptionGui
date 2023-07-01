@@ -8,6 +8,11 @@ from tkinter import messagebox
 from google.cloud import mediatranslation as media
 from six.moves import queue
 
+import whisper
+import torch
+from tempfile import NamedTemporaryFile
+import wave
+
 from microphone import MicrophoneStream
 
 # Audio recording parameters
@@ -23,6 +28,16 @@ CAPTION_UPDATE_INTERVAL = 0.1  # seconds
 TIMEOUT_AFTER_FINAL_CAPTION = 2  # seconds
 
 SpeechEventType = media.StreamingTranslateSpeechResponse.SpeechEventType
+
+
+def write_to_wav(audio_content, wav_file):
+    wf = wave.open(wav_file, 'wb')
+    wf.setnchannels(1)
+    wf.setsampwidth(2)  # assuming audio_content is int16
+    wf.setframerate(RATE)
+    wf.writeframes(audio_content)
+    wf.close()
+    return wav_file
 
 
 class CaptionGUI:
@@ -94,6 +109,7 @@ class Robot(threading.Thread):
         self.daemon = True
         self.running = False
         self.label_queue = label_queue
+        self.audio_model = whisper.load_model('tiny')
 
     def start(self) -> None:
         self.running = True
@@ -109,35 +125,21 @@ class Robot(threading.Thread):
             self._translation_loop()
 
     def _translation_loop(self):
-        client = media.SpeechTranslationServiceClient()
-
-        speech_config = media.TranslateSpeechConfig(
-            audio_encoding="linear16",
-            source_language_code=SOURCE_LANGUAGE,
-            target_language_code=TARGET_LANGUAGE
-        )
-
-        config = media.StreamingTranslateSpeechConfig(
-            audio_config=speech_config,
-            single_utterance=True,
-        )
-
-        first_request = media.StreamingTranslateSpeechRequest(
-            streaming_config=config
-        )
-
         with MicrophoneStream(RATE, CHUNK) as stream:
             audio_generator = stream.generator()
-            mic_requests = (
-                media.StreamingTranslateSpeechRequest(audio_content=content)
-                for content in audio_generator
-            )
-
-            requests = itertools.chain([first_request], mic_requests)
-            responses = client.streaming_translate_speech(requests)
-            result = self._print_translation_loop(responses)
-            if result == 0:
-                stream.exit()
+            while self.running:
+                audio_content = next(audio_generator)
+                # Convert the audio_content to a temporary wav file to be fed to whisper
+                with NamedTemporaryFile(suffix=".wav", delete=True) as temp_wav:
+                    wav_file = write_to_wav(audio_content,
+                                            temp_wav.name)  # You have to implement write_to_wav function to convert raw audio to wav
+                    # Use Whisper ASR for transcription
+                    result = self.audio_model.transcribe(wav_file, fp16=torch.cuda.is_available())
+                    translation = result['text'].strip()
+                    self.label_queue.put((translation, False))  # Partial Translation
+                    if not translation:  # If there is no translation, treat it as the end of an utterance
+                        self.label_queue.put((translation, True))
+                        return 0
 
     def _print_translation_loop(self, responses):
         """
