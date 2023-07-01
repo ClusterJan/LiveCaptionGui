@@ -1,28 +1,31 @@
-import itertools
-import logging
 import threading
 import time
+from queue import Queue, Empty
 import tkinter as tk
 from tkinter import messagebox
-
-from google.cloud import mediatranslation as media
-from six.moves import queue
-
+from itertools import chain
+from google.cloud.mediatranslation import (
+    SpeechTranslationServiceClient,
+    TranslateSpeechConfig,
+    StreamingTranslateSpeechConfig,
+    StreamingTranslateSpeechRequest,
+    StreamingTranslateSpeechResponse
+)
 from microphone import MicrophoneStream
 
 # Audio recording parameters
 RATE = 16000
-CHUNK = int(RATE / 10)  # 100ms
+CHUNK = int(RATE / 2.5)  # 400ms
 
 # Translation parameters
-SOURCE_LANGUAGE = "it-IT"
+SOURCE_LANGUAGE = "de-DE"
 TARGET_LANGUAGE = "en-US"
 
 # GUI parameters
 CAPTION_UPDATE_INTERVAL = 0.1  # seconds
 TIMEOUT_AFTER_FINAL_CAPTION = 2  # seconds
 
-SpeechEventType = media.StreamingTranslateSpeechResponse.SpeechEventType
+SpeechEventType = StreamingTranslateSpeechResponse.SpeechEventType
 
 
 class CaptionGUI:
@@ -56,7 +59,7 @@ class CaptionGUI:
         self.stop_btn.config(width=5)
         self.stop_btn.grid(row=0, column=2)
 
-        self.label_caption_1_queue = queue.Queue()  # Queue for the caption label: (translation, is_final)
+        self.label_caption_1_queue = Queue()  # Queue for the caption label: (translation, is_final)
         self.label_caption_1_text = tk.StringVar()
         self.label_caption_1_text.set("System is ready.\nPress Start to begin.")
 
@@ -89,51 +92,59 @@ class CaptionGUI:
 
 
 class Robot(threading.Thread):
-    def __init__(self, name: str, label_queue: queue.Queue):
+    def __init__(self, name: str, label_queue: Queue):
         super().__init__(name=name)
         self.daemon = True
-        self.running = False
         self.label_queue = label_queue
 
-    def start(self) -> None:
-        self.running = True
-        logging.info(f"Starting {self.name} thread.")
-        super().start()
+        # Reusing the same client and config
+        self.client = SpeechTranslationServiceClient()
+        speech_config = TranslateSpeechConfig(
+            audio_encoding="linear16",
+            source_language_code=SOURCE_LANGUAGE,
+            target_language_code=TARGET_LANGUAGE
+        )
+        self.config = StreamingTranslateSpeechConfig(
+            audio_config=speech_config,
+            single_utterance=True,
+        )
 
     def stop(self) -> None:
-        self.running = False
         self.label_queue.put(("...", True))
 
     def run(self) -> None:
-        while self.running:
-            self._translation_loop()
+        while True:
+            try:
+                self._translation_loop()
+            except Empty:
+                break
 
     def _translation_loop(self):
-        client = media.SpeechTranslationServiceClient()
+        client = SpeechTranslationServiceClient()
 
-        speech_config = media.TranslateSpeechConfig(
+        speech_config = TranslateSpeechConfig(
             audio_encoding="linear16",
             source_language_code=SOURCE_LANGUAGE,
             target_language_code=TARGET_LANGUAGE
         )
 
-        config = media.StreamingTranslateSpeechConfig(
+        config = StreamingTranslateSpeechConfig(
             audio_config=speech_config,
             single_utterance=True,
         )
 
-        first_request = media.StreamingTranslateSpeechRequest(
+        first_request = StreamingTranslateSpeechRequest(
             streaming_config=config
         )
 
         with MicrophoneStream(RATE, CHUNK) as stream:
             audio_generator = stream.generator()
             mic_requests = (
-                media.StreamingTranslateSpeechRequest(audio_content=content)
+                StreamingTranslateSpeechRequest(audio_content=content)
                 for content in audio_generator
             )
 
-            requests = itertools.chain([first_request], mic_requests)
+            requests = chain([first_request], mic_requests)
             responses = client.streaming_translate_speech(requests)
             result = self._print_translation_loop(responses)
             if result == 0:
@@ -162,7 +173,7 @@ class Robot(threading.Thread):
 
 
 class LabelUpdater(threading.Thread):
-    def __init__(self, name: str, label_queue: queue.Queue, root_app: tk.Tk, variable: tk.Variable):
+    def __init__(self, name: str, label_queue: Queue, root_app: tk.Tk, variable: tk.StringVar):
         super().__init__(name=name)
         self.daemon = True
         self.label_queue = label_queue
@@ -172,23 +183,11 @@ class LabelUpdater(threading.Thread):
     def run(self) -> None:
         # run forever
         while True:
-            # wait a second please
-            time.sleep(CAPTION_UPDATE_INTERVAL)
-
-            last_msg = None
-            while True:
-                try:
-                    msg, is_final = self.label_queue.get(block=False)
-                except queue.Empty:
-                    break
-
+            try:
+                msg, is_final = self.label_queue.get(timeout=CAPTION_UPDATE_INTERVAL)
+                self.variable.set(msg)
+                self.label_queue.task_done()
                 if is_final:
-                    self.variable.set(msg)
-                    self.label_queue.task_done()
                     time.sleep(TIMEOUT_AFTER_FINAL_CAPTION)
-                    break
-                else:
-                    last_msg = msg
-                    self.label_queue.task_done()
-            if last_msg:
-                self.variable.set(last_msg)
+            except Empty:
+                pass
