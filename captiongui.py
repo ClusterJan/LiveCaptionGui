@@ -18,7 +18,7 @@ RATE = 16000
 CHUNK = int(RATE / 2.5)  # 400ms
 
 # Translation parameters
-SOURCE_LANGUAGE = "de-DE"
+SOURCE_LANGUAGE = "it-IT"
 TARGET_LANGUAGE = "en-US"
 
 # GUI parameters
